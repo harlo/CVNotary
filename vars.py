@@ -1,3 +1,3 @@
 BASH_CMD = {
-	'GPG_DECRYPT' : "gpg --homedir=%s"
+	'GET_MIME_TYPE' : "file %(file_path)s"
 }

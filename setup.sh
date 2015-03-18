@@ -2,5 +2,5 @@
 
 # Create virtualenv
 virtualenv venv
-pip install -r dutils/requirements.txt
+pip install -r requirements.txt
 cd lib/camera-v && ./install.sh

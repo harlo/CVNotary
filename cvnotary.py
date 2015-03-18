@@ -8,7 +8,7 @@ from vars import *
 class CVNotary():
 	def __init__(self, file_path):
 		self.obj = {
-			'date_admitted' : time() * 1000,
+			'date_admitted' : time() * 1000
 		}
 
 		self.prop = {}
@@ -20,11 +20,15 @@ class CVNotary():
 			print e, type(e)
 			self.properties_updated = True
 
+		self.prop['file_path'] = file_path
+
 		if self.type == "source":
 			self.parse_source()
 		elif self.type == "submission":
 			self.parse_submission()
 
+		del self.prop['file_path']
+		
 		if hasattr(self, 'properties_updated') and self.properties_updated:
 			save_props = prompt('Save changes? [y|N] : ')
 			if save_props == "y":

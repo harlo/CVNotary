@@ -1,3 +1,4 @@
 ecdsa
 pycrypto
 fabric
+requests

@@ -1,28 +1,18 @@
-import os
+import os, requests, json
 from time import time
+from copy import deepcopy
 from sys import argv, exit
 from fabric.api import settings, local
 
-from vars import BASH_CMD
+from vars import BASH_CMD, KEYBASE_IO, KEYBASE_DEFAULT_MESSAGE
 from lib.camera-v.camerav_express import camerav_parser
 
 class CVNotary():
 	def __init__(self, file_path):
-		self.obj = {
-			'date_admitted' : time() * 1000
-		}
+		self.obj = {'date_admitted' : time() * 1000}
 
-		self.prop = {}
+		self.prop = {'file_path' : file_path}
 		self.notarized = False
-
-		try:
-			with open(os.path.join(BASE_DIR, ".config.json"), 'rb') as conf:
-				self.prop = json.loads(conf.read())
-		except Exception as e:
-			print e, type(e)
-			self.properties_updated = True
-
-		self.prop['file_path'] = file_path
 
 		with settings(warn_only=True):
 			res, output = camerav_parser(
@@ -31,7 +21,8 @@ class CVNotary():
 			)
 
 		try:
-			self.obj.update(output)
+			self.prop.update(output)
+			self.obj['mime_type'] = self.prop['mime_type']
 			print self.obj
 		except Exception as e:
 			print e, type(e)
@@ -43,22 +34,51 @@ class CVNotary():
 			p = self.parse_submission()
 
 		if p and self.generate_message():
-			self.notarized = True
+			self.notarized = self.publish_message()
 
-		del self.prop['file_path']
+	def __do_bash(self, cmd):
+		with settings(warn_only=True):
+			b = local(cmd, capture=True)
 
-		if hasattr(self, 'properties_updated') and self.properties_updated:
-			save_props = prompt('Save changes? [y|N] : ')
-			if save_props == "y":
-				with open(os.path.join(BASE_DIR, ".config.json"), 'wb+') as conf:
-					conf.write(json.dumps(self.prop))
+		content = None
+		res = False if b.return_code != 0 else True
+		
+		try:
+			content = b.stdout
+		except Exception as e:
+			print e, type(e)
+
+		return res, content
+
+	def __do_keybase_request(self, url, data):
+		# XXX: if not logged in,
+		# XXX: get salt and csrf_token (get to /salt)
+		# XXX: calculate pwd hash
+		# XXX: post to /login and set session cookie
+
+		# XXX: set necessary headers around the data
+
+		r = requests.post(url, data=data)
+
+		content = None
+		res = False if r.status_code != 200 else True
+
+		return res, content
 
 	def parse_submission(self):
 		try:
 			# XXX: verify signature in j3m
+			res, gpg_result = self.__do_bash(BASH_CMD['GPG_VERIFY'] % self.prop)
+			if not res:
+				return False
+
 			self.obj['gpg_verified'] = gpg_result
 
 			# XXX: media hasher applied
+			res, media_hash_result = self.__do_bash(BASH_CMD['GET_MEDIA_HASH'] % self.prop)
+			if not res:
+				return False
+
 			self.obj['media_hash_verified'] = media_hash_result
 
 			return True
@@ -71,6 +91,10 @@ class CVNotary():
 	def parse_source(self):
 		try:
 			# XXX: add to keyring in gpg
+			res, gpg_result = self.__do_bash(BASH_CMD['GPG_ADD_TO_KEYRING'] % self.prop)
+			if not res:
+				return False
+
 			self.obj['fingerprint'] = gpg_result
 
 			return self.sign_key()
@@ -80,10 +104,9 @@ class CVNotary():
 		return False
 
 	def sign_key(self):
-		# XXX: sign keyring in gpg
-		# XXX: publish keyring updates to keybase
-		
-		return False
+		# XXX: sign key in gpg
+		res, gpg_result = self.__do_bash(BASH_CMD['GPG_SIGN_KEY'] % self.prop)
+		return res
 
 	def generate_message(self):
 		if self.obj['mime_type'] == "source":
@@ -113,11 +136,23 @@ class CVNotary():
 		return None
 
 	def sign_message(self, message):
-		# XXX: sign message in gpg
-		return self.publish_signing_document(message)
+		# XXX: sign message via keybase
+		res, keybase_result = self.__do_bash(BASH_CMD['KEYBASE_SIGN_MESSAGE'] % self.prop)
+		return res
 
-	def publish_signing_document(self, doc):
-		# XXX: push to keybase via api
+	def publish_message(self):
+		# XXX: post signature document to keybase server
+		try:
+			message = deepcopy(KEYBASE_DEFAULT_MESSAGE)
+
+			with open(self.prop['signed_message'], 'rb') as m:
+				message['sig'] = m.read()
+
+			res, content = self.__do_keybase_request(KEYBASE_IO['SIG_POST'], data=message)
+			return res
+		except Exception as e:
+			print e, type(e)
+
 		return False
 
 if __name__ == "__main__":

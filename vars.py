@@ -1,3 +1,5 @@
+import os
+
 BASH_CMD = {
 	'GET_MIME_TYPE' : "file %(file_path)s",
 	'KEYBASE_VERIFY' : "keybase verify %(sig_file_path)s %(verify_path)s",
@@ -19,4 +21,10 @@ KEYBASE_IO = {
 	'SIG_POST' : "%s/sig/post.json" % KB_URL,
 	'SALT' : "%s/getsalt.json" % KB_URL,
 	'LOGIN' : "%s/login.json" % KB_URL
+}
+
+POE_URL = "http://localhost:%d" % int(os.environ['POE_PORT'])
+PROOF_OF_EXISTENCE_IO = {
+	'STATUS' : "%s/status" % POE_URL,
+	'REQUEST' : "%s/request" % POE_URL
 }

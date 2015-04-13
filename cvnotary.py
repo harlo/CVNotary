@@ -7,11 +7,17 @@ from fabric.api import settings, local
 from vars import BASH_CMD, KEYBASE_IO, KEYBASE_DEFAULT_MESSAGE
 from lib.camera-v.camerav_express import camerav_parser
 
-class CVNotary():
+from c_utils.cutils import __load_config
+
+class CameraVNotaryInstance():
 	def __init__(self, file_path):
 		self.obj = {'date_admitted' : time() * 1000}
 
-		self.prop = {'file_path' : file_path}
+		self.prop = __load_config
+		if self.prop is None:
+			self.prop = {}
+
+		self.prop['file_path'] = file_path
 		self.notarized = False
 
 		with settings(warn_only=True):
@@ -156,8 +162,9 @@ class CVNotary():
 		return False
 
 if __name__ == "__main__":
-	if len(argv) == 0:
-		exit(-1)
+	res = False
 
-	cvn = CVNotary(argv[1])
-	exit(0 if cvn.notarized else -1)
+	
+	print argv
+
+	exit(0 if res else -1)

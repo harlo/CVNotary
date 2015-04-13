@@ -1,7 +1,11 @@
 #! /bin/bash
 
+THIS_DIR=`pwd`
+
 # Create virtualenv
 virtualenv venv
+source venv/bin/activate
+
 pip install -r requirements.txt
 
 # build camera-v
@@ -9,10 +13,9 @@ cd lib/camera-v && ./install.sh
 
 # build j3mparser
 cd ../j3mparser
-mvn clean compile assembly:single
-mvn install
+mvn clean install
 
-# build proofofexistence
-cd ../proofofexistence
-pip install -r requirements.txt
-python setup.py $1
+cd ../
+python setup.py "$@"
+
+deactivate venv

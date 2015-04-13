@@ -4,3 +4,6 @@
 [submodule "lib/j3mparser"]
 	path = lib/j3mparser
 	url = git@github.com:schirkova/j3mParser.git
+[submodule "c_utils"]
+	path = c_utils
+	url = git@gist.github.com:/d4c45902ef5551fe112c.git

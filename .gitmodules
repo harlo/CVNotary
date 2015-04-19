@@ -7,3 +7,6 @@
 [submodule "lib/camerav"]
 	path = lib/camerav
 	url = git@github.com:harlo/CameraVExpress.git
+[submodule "lib/gnupg"]
+	path = lib/gnupg
+	url = git@github.com:isislovecruft/python-gnupg.git

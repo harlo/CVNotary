@@ -1,12 +1,6 @@
-import os
-
 BASH_CMD = {
 	'GET_MIME_TYPE' : "file %(file_path)s",
-	'KEYBASE_VERIFY' : "keybase verify %(sig_file_path)s %(verify_path)s",
-	'GET_MEDIA_HASH' : "",
-	'GPG_ADD_TO_KEYRING' : "gpg --homedir=%(GNUPG_PATH)s add",
-	'GPG_SIGN_KEY' : "gpg --homedir=%(GNUPG_PATH)s sign",
-	'KEYBASE_SIGN_MESSAGE' : "keybase sign %(message_path)s --detatch-sign"
+	'GET_MEDIA_HASH' : ""
 }
 
 

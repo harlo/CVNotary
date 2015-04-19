@@ -15,6 +15,9 @@ cd lib/camera-v && ./install.sh
 cd ../j3mparser
 mvn clean install
 
+cd ../gnupg
+python setup.py install
+
 cd $THIS_DIR
 python setup.py "$@"
 

@@ -4,3 +4,6 @@
 [submodule "c_utils"]
 	path = c_utils
 	url = git@gist.github.com:/d4c45902ef5551fe112c.git
+[submodule "lib/camerav"]
+	path = lib/camerav
+	url = git@github.com:harlo/CameraVExpress.git

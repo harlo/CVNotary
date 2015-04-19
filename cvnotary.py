@@ -5,7 +5,7 @@ from sys import argv, exit
 from fabric.api import settings, local
 
 from vars import BASH_CMD, KEYBASE_IO, KEYBASE_DEFAULT_MESSAGE
-from lib.camera-v.camerav_express import camerav_parser
+from lib.camerav.camerav_express import camerav_parser
 
 from c_utils.cutils import __load_config
 
@@ -73,7 +73,7 @@ class CameraVNotaryInstance():
 
 	def parse_submission(self):
 		print "PARSING SUBMISSION"
-		
+
 		try:
 			# XXX: verify signature in j3m
 			res, gpg_result = self.__do_bash(BASH_CMD['GPG_VERIFY'] % self.prop)

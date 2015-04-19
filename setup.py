@@ -18,7 +18,16 @@ def __setup(with_config):
 			DEFAULT_GNUPG_PATH, DEFAULT_GNUPG_PATH, None)
 	]
 
-	return save_config(build_config(conf_keys, with_config))
+	res, config = save_config(build_config(conf_keys, with_config), return_config=True)
+	
+	if res and config['DEFAULT_OUTPUT_DIR'] is not None:
+		if not os.path.exists(config['DEFAULT_OUTPUT_DIR']):
+			from fabric.api import settings, local
+			
+			with settings(warn_only=True):
+				local("mkdir -p %(DEFAULT_OUTPUT_DIR)s" % config)
+
+	return res
 
 if __name__ == "__main__":
 	with_config = None

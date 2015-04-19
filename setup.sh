@@ -15,7 +15,7 @@ cd lib/camera-v && ./install.sh
 cd ../j3mparser
 mvn clean install
 
-cd ../
+cd $THIS_DIR
 python setup.py "$@"
 
 deactivate venv

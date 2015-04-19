@@ -72,6 +72,8 @@ class CameraVNotaryInstance():
 		return res, content
 
 	def parse_submission(self):
+		print "PARSING SUBMISSION"
+		
 		try:
 			# XXX: verify signature in j3m
 			res, gpg_result = self.__do_bash(BASH_CMD['GPG_VERIFY'] % self.prop)

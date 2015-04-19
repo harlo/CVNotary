@@ -1,6 +1,3 @@
-[submodule "lib/camera-v"]
-	path = lib/camera-v
-	url = git@github.com:harlo/CameraVExpress.git
 [submodule "lib/j3mparser"]
 	path = lib/j3mparser
 	url = git@github.com:schirkova/j3mParser.git

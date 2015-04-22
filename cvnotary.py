@@ -5,7 +5,6 @@ from copy import deepcopy
 from sys import argv, exit
 
 from fabric.api import settings, local
-from fabric.operations import prompt
 
 from vars import BASH_CMD, KEYBASE_IO, KEYBASE_DEFAULT_MESSAGE
 from c_utils.cutils import DUtilsKey, DUtilsTransforms, load_config, parse_config_keys
@@ -24,10 +23,13 @@ class CameraVNotaryInstance():
 		secrets = [DUtilsKey(s, s, None, "none", DUtilsTransforms['NONE_IF_EMPTY']) \
 			for s in ['KEYBASE_PWD', 'GPG_PWD']]
 
-		self.prop.update(parse_config_keys(secrets))
+		self.prop.update(parse_config_keys(secrets, self.prop))
 
 		if notarize_media is not None:
 			self.notarize_media(notarize_media)
+			
+			with settings(warn_only=True):
+				local("rm -rf %s" % self.prop['data'])
 
 	def notarize_media(self, file_path):
 		self.prop['file_path'] = file_path
@@ -78,7 +80,9 @@ class CameraVNotaryInstance():
 			return False, None
 
 		try:
-			r = requests.post(url, data=data, cookies=self.prop['keybase_session'])
+			data.update({'csrf_token' : self.prop['keybase_session']['csrf_token']})
+			r = requests.post(url, data=data, cookies=self.prop['keybase_session']['cookies'])
+			
 			res = False if r.status_code != 200 else True
 			content = json.loads(r.content)
 
@@ -121,7 +125,7 @@ class CameraVNotaryInstance():
 
 		# XXX: calculate pwd hash
 		try:
-			pwh = scrypt.hash(self.prop['KEYBASE_PWD'], binascii.unhexlify(res['salt']), \
+			pwh = scrypt.hash(str(self.prop['KEYBASE_PWD']), binascii.unhexlify(res['salt']), \
 				N=2**15, r=8, p=1, buflen=224)[192:224]
 		except Exception as e:
 			print "could not generate pwd hash"
@@ -150,10 +154,10 @@ class CameraVNotaryInstance():
 				print "ERROR: KEYBASE status code : %d" % res['status']['code'], res['status']['desc']
 				return False
 
-			self.prop.update({
+			self.prop['keybase_session'] = {
 				'csrf_token' : res['csrf_token'],
-				'session' : res['session']
-			})
+				'cookies' : {'session' : res['session']}
+			}
 
 			del self.prop['KEYBASE_PWD']
 			return True
@@ -248,7 +252,7 @@ class CameraVNotaryInstance():
 
 	def sign_message(self, message):
 		signed_message = self.gpg.sign(message, default_key=self.prop['GPG_KEY_ID'],
-			passphrase=prompt("GPG PWD: "), clearsign=True)
+			passphrase=self.prop['GPG_PWD'], clearsign=True)
 		
 		try:
 			if len(signed_message.data) > 0:
@@ -261,9 +265,11 @@ class CameraVNotaryInstance():
 		
 	def publish_message(self):
 		# XXX: post signature document to keybase server
+		from base64 import b64encode
+
 		try:
 			kb_receipt = deepcopy(KEYBASE_DEFAULT_MESSAGE)
-			kb_receipt['sig'] = self.prop['signed_message']
+			kb_receipt['sig'] = b64encode(self.prop['signed_message'])
 
 			res, content = self.__do_keybase_request(KEYBASE_IO['SIG_POST'], data=kb_receipt)
 			return res

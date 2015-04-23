@@ -124,7 +124,7 @@ class CameraVNotaryInstance():
 				self.prop['j3m_server_url'] = "%(J3M_SERVER_ALIAS)s/source/%(j3m_hash)s/" % self.prop
 
 			published_message = [
-				"\nMore details about this document's metadata can be found [here](%(j3m_server_url)s)."
+				"\nMore details about this document's J3M metadata can be found [here](%(j3m_server_url)s)."
 			]
 
 			with open(self.prop['notarized_message_path'], 'a') as doc:
@@ -435,12 +435,6 @@ class CameraVNotaryInstance():
 			from fabric.operations import prompt
 
 			print "\n** Must pay %(price)d to %(pay_address)s **\n" % self.prop
-			print "Wait until payment made?"
-
-			if prompt("y/N : ") == "y":
-				print "Go ahead and make your payment of %(price)d to %(pay_address)s" % self.prop
-				if prompt("[Press ENTER when done] "):
-					pass
 
 			new_status = self.__check_POE_status()
 			if new_status is None:
@@ -449,7 +443,6 @@ class CameraVNotaryInstance():
 			self.prop.update(new_status)
 
 		if self.prop['status'] in ["pending", "confirmed", "registered"]:
-			# Update notary message
 			try:
 				if 'POE_SERVER_ALIAS' not in self.prop.keys():
 					published_message = [

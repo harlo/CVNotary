@@ -20,3 +20,13 @@ PROOF_OF_EXISTENCE_IO = {
 	'STATUS' : "%(POE_URL)s/status",
 	'REQUEST' : "%(POE_URL)s/request"
 }
+
+MD_FORMATTING_SENTINELS = {
+	'code_block' : {
+		'standard' : ["```", "```"],
+		'jekyll' : ["{%% highlight text %%}", "{%% endhighlight %%}"]
+	},
+	'frontmatter' : {
+		'jekyll' : ["---", "layout: notary", "title: %(signed_message_hash)s", "---\n"]
+	}
+}

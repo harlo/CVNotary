@@ -61,8 +61,88 @@ class CameraVNotaryInstance():
 			p = self.parse_submission()
 
 		if p and self.generate_message():
-			#self.notarized = self.submit_to_blockchain()
-			self.notarized = False
+			if not self.prop['POE_SERVER']:
+				self.notarized = True
+			else:
+				self.notarized = self.submit_to_blockchain()
+
+	def submit_to_blockchain(self):
+		# XXX: check to see if document is there
+		doc_entry = self.__check_POE_status()
+		if doc_entry is None:
+			return False
+
+		if doc_entry['success']:
+			print "ALREADY SUBMITTED"
+		else:
+			if doc_entry['reason'] == "nonexistent":
+				res, doc_entry = self.__do_POE_request("api/v1/register", {'d' : self.prop['signed_message_hash']})
+
+				if not res:
+					print "res is false"
+					return False
+
+				if not doc_entry['success']:
+					print "still could not register."
+					return False
+
+				new_status = self.__check_POE_status()
+				if new_status is None:
+					print "poor doc entry :("
+					return False
+
+				doc_entry['status'] = new_status['status']
+			else:
+				print "unknown error?"
+				return False
+
+		self.prop.update(doc_entry)
+
+		if self.prop['status'] == "registered" and self.prop['pay_address'] and self.prop['price']:
+			from fabric.operations import prompt
+
+			print "\n** Must pay %(price)d to %(pay_address)s **\n" % self.prop
+			print "Wait until payment made?"
+
+			if prompt("y/N : ") == "y":
+				print "Go ahead and make your payment of %(price)d to %(pay_address)s" % self.prop
+				if prompt("[Press ENTER when done] "):
+					pass
+
+			new_status = self.__check_POE_status()
+			if new_status is None:
+				return False
+
+			self.prop.update(new_status)
+
+		if self.prop['status'] in ["pending", "confirmed", "registered"]:
+			# Update notary message
+			try:
+				if 'POE_SERVER_ALIAS' not in self.prop.keys():
+					published_message = [
+						"\nThis *notarization document* has been submitted to a Proof of Existence server hosted locally."
+					]
+
+					if "transaction" in self.prop.keys() and "txstamp" in self.prop.keys():
+						published_message += [
+							"\nThis *notarization document* has been absorbed into the blockchain on %(txstamp)s.",
+							"Transaction: [https://insight.bitpay.com/tx/%(transaction)s](https://insight.bitpay.com/tx/%(transaction)s)"
+						]
+				else:
+					published_message = [
+						"\nThis *notarization document* has been submitted to a Proof of Existence server at [%(POE_SERVER_ALIAS)s](%(POE_SERVER_ALIAS)s).",
+						"\nTo view its status on the blockchain, please visit [%(POE_SERVER_ALIAS)s/detail/%(signed_message_hash)s](%(POE_SERVER_ALIAS)s/detail/%(signed_message_hash)s)."
+					]
+
+				with open(self.prop['notarized_message_path'], 'a') as doc:
+					doc.write("\n".join([l % self.prop for l in published_message]))
+
+				return True
+			except Exception as e:
+				print "could not update notary message"
+				print e, type(e)
+
+		return False
 
 	def __do_bash(self, cmd):
 		with settings(warn_only=True):
@@ -78,38 +158,10 @@ class CameraVNotaryInstance():
 
 		return res, content
 
-	def submit_to_blockchain(self):		
-		# XXX: submit document to POE via API
-		res, doc_entry = self.__do_POE_request("api/document/register", {'d' : self.prop['signed_message_hash']})
-		if not res:
-			return False
-
-		print doc_entry
-
-		self.prop['poe_address'] = doc_entry['address']
-
-		# XXX: immediately pay for document via API if it can
-
-		# Update notary message
-		try:
-			published_message = [
-				"\nThis notarization annoucement has been submitted to a Proof of Existence server at %(POE_SERVER_ALIAS)s",
-				"To view its status on the blockchain, please visit",
-				"%(POE_SERVER_ALIAS)s/detail/%(signed_message_hash)s"
-			]
-
-			with open(self.prop['notarized_message_path'], 'a') as doc:
-				doc.write("\n".join([l % self.prop for l in published_message]))
-
-			return True
-		except Exception as e:
-			print "could not update notary message"
-			print e, type(e)
-
-		
-		return False
-
 	def __do_POE_request(self, url, data):
+		if not self.prop['POE_SERVER']:
+			return False, None
+
 		url = "%s/%s" % (self.prop['POE_SERVER'], url)
 
 		try:
@@ -125,6 +177,13 @@ class CameraVNotaryInstance():
 			print e, type(e)
 
 		return False, None
+
+	def __check_POE_status(self):
+		res, doc_entry = self.__do_POE_request("api/v1/status", {'d' : self.prop['signed_message_hash']})
+		if not res:
+			return None
+
+		return doc_entry
 
 	def __do_keybase_request(self, url, data):
 		if 'keybase_session' not in self.prop.keys() and not self.__do_keybase_login():
@@ -314,19 +373,28 @@ class CameraVNotaryInstance():
 		return False
 		
 	def publish_message(self):
-		self.prop['notarized_message_path'] = os.path.join(self.prop['NOTARY_DOC_DIR'], "%s.md" % self.prop['signed_message_hash'])
+		from vars import MD_FORMATTING_SENTINELS
+
+		self.prop['notarized_message_path'] = os.path.join(self.prop['NOTARY_DOC_DIR'], \
+			"%s.md" % self.prop['signed_message_hash'])
+		
+		code_block_sentinels = MD_FORMATTING_SENTINELS['code_block'] \
+			["standard" if not self.prop['MD_FORMATTING'] else self.prop['MD_FORMATTING']]
+		
+		front_matter = None if not self.prop['MD_FORMATTING'] \
+			else MD_FORMATTING_SENTINELS['frontmatter'][self.prop['MD_FORMATTING']]
 
 		try:
 			published_message = [
-				"---",
-				"layout: notary",
-				"title: %(signed_message_hash)s",
-				"---",
-				"\nOn %(date_admitted_str)s, I/we (%(USER_NAME)s) received document %(file_name)s.\n",
-				"{%% highlight text %%}\n",
-				"%(signed_message)s\n",
-				"{%% endhighlight %%}"
+				"On %(date_admitted_str)s, I/we (%(USER_NAME)s) received document **%(file_name)s**.\n",
+				"The following is my/our *notarization document*.",
+				code_block_sentinels[0],
+				"\n%(signed_message)s\n",
+				code_block_sentinels[1]
 			]
+
+			if front_matter:
+				published_message = front_matter + published_message
 
 			with open(self.prop['notarized_message_path'], 'wb+') as doc:
 				doc.write("\n".join([l % self.prop for l in published_message]))

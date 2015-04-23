@@ -13,6 +13,8 @@ def __setup(with_config):
 		DutilsKey("USER_NAME", "Your name", "No one", "No one", None),
 		DUtilsKey("NOTARY_DOC_DIR", "Directory where notary proofs are stored",
 			DEFAULT_NOTARY_DOC_DIR, DEFAULT_NOTARY_DOC_DIR, None),
+		DUtilsKey("MD_FORMATTING", "Markdown formatting (i.e. jekyll)",
+			None, "none", None),
 		DUtilsKey("DEFAULT_OUTPUT_DIR", "Default output directory (where all exported data should be saved)",
 			None, "parent directory of media", None),
 		DUtilsKey("POE_SERVER", "Host IP of your Proof of Existence server (like, http://localhost:8080)", \

@@ -9,7 +9,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # build camera-v
-cd lib/camera-v && ./install.sh
+cd lib/camerav && ./install.sh
 
 # build j3mparser
 cd ../j3mparser

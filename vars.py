@@ -26,6 +26,10 @@ MD_FORMATTING_SENTINELS = {
 		'standard' : ["```", "```"],
 		'jekyll' : ["{%% highlight text %%}", "{%% endhighlight %%}"]
 	},
+	'json' : {
+		'standard' : ["```", "```"],
+		'jekyll' : ["{%% highlight json %%}", "{%% endhighlight %%}"]
+	},
 	'frontmatter' : {
 		'jekyll' : ["---", "layout: notary", "title: %(signed_message_hash)s", "---\n"]
 	}

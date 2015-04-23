@@ -49,8 +49,11 @@ class CameraVNotaryInstance():
 
 		try:
 			self.prop.update(output)
-			self.obj['mime_type'] = self.prop['mime_type']
-			print self.prop
+			self.obj.update({
+				'mime_type' : self.prop['mime_type'],
+				'date_admitted_str' : self.prop['date_admitted_str']
+			})
+
 		except Exception as e:
 			print e, type(e)
 			return
@@ -283,12 +286,17 @@ class CameraVNotaryInstance():
 		try:
 			with open(self.prop['data'], 'rb') as j3m_metadata:
 				self.obj['j3m_metadata'] = j3m_metadata.read()
-			return True
-
 		except Exception as e:
 			print e, type(e)
+			return False
 
-		return False
+		try:
+			self.obj['j3m_metadata'] = json.loads(self.obj['j3m_metadata'])
+		except Exception as e:
+			print "j3m is not JSON formatted at the moment."
+			print e, type(e)
+
+		return True
 
 	def parse_source(self):
 		for _, _, files in os.walk(self.prop['data']):
@@ -325,7 +333,11 @@ class CameraVNotaryInstance():
 			message = self.generate_submission_message()
 
 		if message is not None:
-			self.prop['signed_message_path'] = "%s.nmsg" % self.prop['data']
+			self.prop.update({
+				'message' : message,
+				'signed_message_path' : "%s.nmsg" % self.prop['data']
+			})
+
 			with open(self.prop['signed_message_path'], 'wb+') as nmsg:
 				nmsg.write(message)
 
@@ -335,7 +347,7 @@ class CameraVNotaryInstance():
 
 	def generate_source_message(self):
 		try:
-			return "Camera-V user %s has been introduced.\n\n%s" % (self.obj['fingerprint'], json.dumps(self.obj))
+			return "Camera-V user %s has been introduced.\n\n%s" % (self.obj['fingerprint'], json.dumps(self.obj, indent=4))
 		except Exception as e:
 			print e, type(e)
 
@@ -343,7 +355,7 @@ class CameraVNotaryInstance():
 
 	def generate_submission_message(self):
 		try:
-			return "A new submission has been processed.\n\n%s\n" % json.dumps(self.obj)
+			return "A new submission has been processed.\n\n%s\n" % json.dumps(self.obj, indent=4)
 		except Exception as e:
 			print e, type(e)
 
@@ -381,12 +393,18 @@ class CameraVNotaryInstance():
 		code_block_sentinels = MD_FORMATTING_SENTINELS['code_block'] \
 			["standard" if not self.prop['MD_FORMATTING'] else self.prop['MD_FORMATTING']]
 		
+		json_sentinels = MD_FORMATTING_SENTINELS['json'] \
+			["standard" if not self.prop['MD_FORMATTING'] else self.prop['MD_FORMATTING']]
+		
 		front_matter = None if not self.prop['MD_FORMATTING'] \
 			else MD_FORMATTING_SENTINELS['frontmatter'][self.prop['MD_FORMATTING']]
 
 		try:
 			published_message = [
 				"On %(date_admitted_str)s, I/we (%(USER_NAME)s) received document **%(file_name)s**.\n",
+				json_sentinels[0],
+				"\n%(message)s\n",
+				json_sentinels[1],
 				"The following is my/our *notarization document*.",
 				code_block_sentinels[0],
 				"\n%(signed_message)s\n",

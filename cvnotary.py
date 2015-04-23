@@ -317,10 +317,15 @@ class CameraVNotaryInstance():
 		self.prop['notarized_message_path'] = os.path.join(self.prop['NOTARY_DOC_DIR'], "%s.md" % self.prop['signed_message_hash'])
 
 		try:
-			# XXX: todo: prettier markdown
 			published_message = [
-				"On %(date_admitted_str)s, I/we (%(USER_NAME)s) received document %(file_name)s.",
-				"\n%(signed_message)s\n"
+				"---",
+				"layout: notary",
+				"title: %(signed_message_hash)s",
+				"---",
+				"\nOn %(date_admitted_str)s, I/we (%(USER_NAME)s) received document %(file_name)s.\n",
+				"{%% highlight text %%}\n",
+				"%(signed_message)s\n",
+				"{%% endhighlight %%}"
 			]
 
 			with open(self.prop['notarized_message_path'], 'wb+') as doc:

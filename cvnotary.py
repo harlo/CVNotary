@@ -221,8 +221,6 @@ class CameraVNotaryInstance():
 		return False
 
 	def parse_submission(self):
-		print "PARSING SUBMISSION"
-
 		try:
 			with open(self.prop['data'], 'rb') as j3m_metadata:
 				self.obj['j3m_metadata'] = j3m_metadata.read()
@@ -268,8 +266,11 @@ class CameraVNotaryInstance():
 			message = self.generate_submission_message()
 
 		if message is not None:
-			print message
-			return self.sign_message(message) and self.publish_message()
+			self.prop['signed_message_path'] = "%s.nmsg" % self.prop['data']
+			with open(self.prop['signed_message_path'], 'wb+') as nmsg:
+				nmsg.write(message)
+
+			return self.sign_message() and self.publish_message()
 
 		return False
 
@@ -283,19 +284,21 @@ class CameraVNotaryInstance():
 
 	def generate_submission_message(self):
 		try:
-			return "A new submission has been processed.\n\n%s" % json.dumps(self.obj)
+			return "A new submission has been processed.\n\n%s\n" % json.dumps(self.obj)
 		except Exception as e:
 			print e, type(e)
 
 		return None
 
-	def sign_message(self, message):
-		signed_message = self.gpg.sign(message, default_key=self.prop['GPG_KEY_ID'],
-			passphrase=self.prop['GPG_PWD'], clearsign=True)
+	def sign_message(self):
+		with open(self.prop['signed_message_path'], 'rb') as m_stream:
+			signed_message = self.gpg.sign(m_stream, default_key=self.prop['GPG_KEY_ID'],
+				passphrase=self.prop['GPG_PWD'], clearsign=False)
 		
 		try:
 			if len(signed_message.data) > 0:
 				from hashlib import sha256
+				
 				s = sha256()
 				s.update(signed_message.data)
 

@@ -63,89 +63,14 @@ class CameraVNotaryInstance():
 		elif self.obj['mime_type'] in ["image", "video"]:
 			p = self.parse_submission()
 
+		self.__do_J3M_Lookup()
+
 		if p and self.generate_message():
 			if not self.prop['POE_SERVER']:
 				self.notarized = True
 			else:
 				self.notarized = self.submit_to_blockchain()
-
-	def submit_to_blockchain(self):
-		# XXX: check to see if document is there
-		doc_entry = self.__check_POE_status()
-		if doc_entry is None:
-			return False
-
-		if doc_entry['success']:
-			print "ALREADY SUBMITTED"
-		else:
-			if doc_entry['reason'] == "nonexistent":
-				res, doc_entry = self.__do_POE_request("api/v1/register", {'d' : self.prop['signed_message_hash']})
-
-				if not res:
-					print "res is false"
-					return False
-
-				if not doc_entry['success']:
-					print "still could not register."
-					return False
-
-				new_status = self.__check_POE_status()
-				if new_status is None:
-					print "poor doc entry :("
-					return False
-
-				doc_entry['status'] = new_status['status']
-			else:
-				print "unknown error?"
-				return False
-
-		self.prop.update(doc_entry)
-
-		if self.prop['status'] == "registered" and self.prop['pay_address'] and self.prop['price']:
-			from fabric.operations import prompt
-
-			print "\n** Must pay %(price)d to %(pay_address)s **\n" % self.prop
-			print "Wait until payment made?"
-
-			if prompt("y/N : ") == "y":
-				print "Go ahead and make your payment of %(price)d to %(pay_address)s" % self.prop
-				if prompt("[Press ENTER when done] "):
-					pass
-
-			new_status = self.__check_POE_status()
-			if new_status is None:
-				return False
-
-			self.prop.update(new_status)
-
-		if self.prop['status'] in ["pending", "confirmed", "registered"]:
-			# Update notary message
-			try:
-				if 'POE_SERVER_ALIAS' not in self.prop.keys():
-					published_message = [
-						"\nThis *notarization document* has been submitted to a Proof of Existence server hosted locally."
-					]
-
-					if "transaction" in self.prop.keys() and "txstamp" in self.prop.keys():
-						published_message += [
-							"\nThis *notarization document* has been absorbed into the blockchain on %(txstamp)s.",
-							"Transaction: [https://insight.bitpay.com/tx/%(transaction)s](https://insight.bitpay.com/tx/%(transaction)s)"
-						]
-				else:
-					published_message = [
-						"\nThis *notarization document* has been submitted to a Proof of Existence server at [%(POE_SERVER_ALIAS)s](%(POE_SERVER_ALIAS)s).",
-						"\nTo view its status on the blockchain, please visit [%(POE_SERVER_ALIAS)s/detail/%(signed_message_hash)s](%(POE_SERVER_ALIAS)s/detail/%(signed_message_hash)s)."
-					]
-
-				with open(self.prop['notarized_message_path'], 'a') as doc:
-					doc.write("\n".join([l % self.prop for l in published_message]))
-
-				return True
-			except Exception as e:
-				print "could not update notary message"
-				print e, type(e)
-
-		return False
+				self.__do_J3M_Lookup()
 
 	def __do_bash(self, cmd):
 		with settings(warn_only=True):
@@ -160,6 +85,57 @@ class CameraVNotaryInstance():
 			print e, type(e)
 
 		return res, content
+
+	def __do_J3M_Lookup(self):
+		if not self.prop['J3M_SERVER']:
+			return False
+
+		h = None
+
+		if 'J3M_SERVER_ID_LEN' not in self.prop.keys() or self.prop['J3M_SERVER_ID_LEN'] == 40:
+			from hashlib import sha1
+			h = sha1()
+		elif self.prop['J3M_SERVER_ID_LEN'] == 32:
+			from hashlib import md5
+			h = md5()
+
+		if h is None:
+			return False
+
+		with open(self.prop['file_path'], 'rb') as f:
+			for chunk in iter(lambda: f.read(4096), b''):
+				h.update(chunk)
+
+		self.prop['j3m_hash'] = h.hexdigest()
+
+		url = "%s/documents/?_id=%s" % (self.prop['J3M_SERVER'], self.prop['j3m_hash'])
+
+		try:
+			r = requests.get(url, data={'_id' : self.prop['j3m_hash']})
+			if r.status_code != 200:
+				return False
+
+			if "J3M_SERVER_ALIAS" not in self.prop.keys():
+				self.prop['J3M_SERVER_ALIAS'] = self.prop['J3M_SERVER']
+
+			if self.prop['mime_type'] in ["image", "video"]:
+				self.prop['j3m_server_url'] = "%(J3M_SERVER_ALIAS)s/submission/%(j3m_hash)s/" % self.prop
+			else:
+				self.prop['j3m_server_url'] = "%(J3M_SERVER_ALIAS)s/source/%(j3m_hash)s/" % self.prop
+
+			published_message = [
+				"\nMore details about this document's metadata can be found [here](%(j3m_server_url)s)."
+			]
+
+			with open(self.prop['notarized_message_path'], 'a') as doc:
+				doc.write("\n".join([l % self.prop for l in published_message]))
+
+			return True
+
+		except Exception as e:
+			print e, type(e)
+
+		return False
 
 	def __do_POE_request(self, url, data):
 		if not self.prop['POE_SERVER']:
@@ -420,6 +396,84 @@ class CameraVNotaryInstance():
 			return True
 		except Exception as e:
 			print e, type(e)
+
+		return False
+
+	def submit_to_blockchain(self):
+		# XXX: check to see if document is there
+		doc_entry = self.__check_POE_status()
+		if doc_entry is None:
+			return False
+
+		if doc_entry['success']:
+			print "ALREADY SUBMITTED"
+		else:
+			if doc_entry['reason'] == "nonexistent":
+				res, doc_entry = self.__do_POE_request("api/v1/register", {'d' : self.prop['signed_message_hash']})
+
+				if not res:
+					print "res is false"
+					return False
+
+				if not doc_entry['success']:
+					print "still could not register."
+					return False
+
+				new_status = self.__check_POE_status()
+				if new_status is None:
+					print "poor doc entry :("
+					return False
+
+				doc_entry['status'] = new_status['status']
+			else:
+				print "unknown error?"
+				return False
+
+		self.prop.update(doc_entry)
+
+		if self.prop['status'] == "registered" and self.prop['pay_address'] and self.prop['price']:
+			from fabric.operations import prompt
+
+			print "\n** Must pay %(price)d to %(pay_address)s **\n" % self.prop
+			print "Wait until payment made?"
+
+			if prompt("y/N : ") == "y":
+				print "Go ahead and make your payment of %(price)d to %(pay_address)s" % self.prop
+				if prompt("[Press ENTER when done] "):
+					pass
+
+			new_status = self.__check_POE_status()
+			if new_status is None:
+				return False
+
+			self.prop.update(new_status)
+
+		if self.prop['status'] in ["pending", "confirmed", "registered"]:
+			# Update notary message
+			try:
+				if 'POE_SERVER_ALIAS' not in self.prop.keys():
+					published_message = [
+						"\nThis *notarization document* has been submitted to a Proof of Existence server hosted locally."
+					]
+
+					if "transaction" in self.prop.keys() and "txstamp" in self.prop.keys():
+						published_message += [
+							"\nThis *notarization document* has been absorbed into the blockchain on %(txstamp)s.",
+							"Transaction: [https://insight.bitpay.com/tx/%(transaction)s](https://insight.bitpay.com/tx/%(transaction)s)"
+						]
+				else:
+					published_message = [
+						"\nThis *notarization document* has been submitted to a Proof of Existence server at [%(POE_SERVER_ALIAS)s](%(POE_SERVER_ALIAS)s).",
+						"\nTo view its status on the blockchain, please visit [%(POE_SERVER_ALIAS)s/detail/%(signed_message_hash)s](%(POE_SERVER_ALIAS)s/detail/%(signed_message_hash)s)."
+					]
+
+				with open(self.prop['notarized_message_path'], 'a') as doc:
+					doc.write("\n".join([l % self.prop for l in published_message]))
+
+				return True
+			except Exception as e:
+				print "could not update notary message"
+				print e, type(e)
 
 		return False
 

@@ -22,6 +22,7 @@ def __setup(with_config):
 		DUtilsKey("POE_SERVER_ALIAS", "Alias of your Proof of Existence server", None, "None", None),
 		DUtilsKey("J3M_SERVER", "URL of your J3M Media Server",
 			DEFAULT_J3M_SERVER, DEFAULT_J3M_SERVER, None),
+		DUtilsKey("J3M_SERVER_ALIAS", "Alias of your J3M server", None, "None", None),
 		DUtilsKey("GNUPG_PATH", "Path to your GPG Keyring", DEFAULT_GNUPG_PATH, DEFAULT_GNUPG_PATH, None),
 		DUtilsKey("GPG_KEY_ID", "Your key ID", None, "none", None),
 		DUtilsKey("KEYBASE_ID", "Your Keybase.io ID", None, "none", None)

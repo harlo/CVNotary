@@ -21,10 +21,10 @@ Then, run `./install.sh` to build the utility.  During setup, you'll be asked th
 
 To notarize a document, run `./notarize.sh /path/to/document`.  Your *notarization annoucement* will be left in your notary directory, and associated data from the document will be found at the path specified in your config.
 
-#### Submitting to the blockchain
+#### Submitting to the Blockchain
 
 Before the *notarization announcement* can be generated, the document will be submitted to the blockchain via your associated Proof of Existence server.  You will be notified of a payment address to submit bitcoin to (and you can also query the Proof of Existence server independently, if you need to.)  This app **does not** monitor the transaction; that is for Proof of Existence to do; but if you have the POE_SERVER_ALIAS configured, the link to this transaction will be included in your notarization announcement.
 
-### Publishing a Notarization Announcement
+#### Publishing a Notarization Announcement
 
-Notarization announcements are in markdown.  It is recommended using git, svn, or some kind of version control to ensure that these announcements are publicly available.  A user can import the signed PGP message to verify your notarization announcement.  **For this to mean anything to end-users, be sure to publish your public key on a keyserver, at [keybase.io](https://keybase.io), or on an SSL-protected site you have ownersip over.
+Notarization announcements are in markdown.  It is recommended using git, svn, or some kind of version control to ensure that these announcements are publicly available.  A user can import the signed PGP message to verify your notarization announcement.  **For this to mean anything to end-users, be sure to publish your public key** on a keyserver, at [keybase.io](https://keybase.io), or on an SSL-protected site you have ownersip over.

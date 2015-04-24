@@ -21,8 +21,7 @@ class CameraVNotaryInstance():
 
 		self.gpg = gnupg.GPG(homedir=self.prop['GNUPG_PATH'])
 
-		secrets = [DUtilsKey(s, s, None, "none", DUtilsTransforms['NONE_IF_EMPTY']) \
-			for s in ['KEYBASE_PWD', 'GPG_PWD']]
+		secrets = [DUtilsKey(s, s, None, "none", DUtilsTransforms['NONE_IF_EMPTY']) for s in ['GPG_PWD']]
 
 		self.prop.update(parse_config_keys(secrets, self.prop))
 		self.prop['date_admitted_str'] = datetime.fromtimestamp(float(self.obj['date_admitted']/1000)).strftime("%B %d, %Y (%H:%M:%S)")
@@ -62,8 +61,6 @@ class CameraVNotaryInstance():
 			p = self.parse_source()
 		elif self.obj['mime_type'] in ["image", "video"]:
 			p = self.parse_submission()
-
-		self.__do_J3M_Lookup()
 
 		if p and self.generate_message():
 			if not self.prop['POE_SERVER']:
@@ -124,7 +121,7 @@ class CameraVNotaryInstance():
 				self.prop['j3m_server_url'] = "%(J3M_SERVER_ALIAS)s/source/%(j3m_hash)s/" % self.prop
 
 			published_message = [
-				"\nMore details about this document's J3M metadata can be found [here](%(j3m_server_url)s)."
+				"\n\nMore details about this document's J3M metadata can be found [here](%(j3m_server_url)s)."
 			]
 
 			with open(self.prop['notarized_message_path'], 'a') as doc:
@@ -163,100 +160,6 @@ class CameraVNotaryInstance():
 			return None
 
 		return doc_entry
-
-	def __do_keybase_request(self, url, data):
-		if 'keybase_session' not in self.prop.keys() and not self.__do_keybase_login():
-			return False, None
-
-		try:
-			data.update({'csrf_token' : self.prop['keybase_session']['csrf_token']})
-			r = requests.post(url, data=data, cookies=self.prop['keybase_session']['cookies'])
-			
-			res = False if r.status_code != 200 else True
-			content = json.loads(r.content)
-
-			print content
-
-			if 'csrf_token' in content.keys():
-				self.prop['keybase_session']['csrf_token'] = content['csrf_token']
-
-			return res, content
-		except Exception as e:
-			print "could not do keybase api call to %s" % url
-			print e, type(e)
-
-		return False, None
-
-	def __do_keybase_login(self):
-		import binascii, hmac, scrypt, hashlib
-		from base64 import b64decode
-
-		kb_data = {'email_or_username' : self.prop['KEYBASE_ID']}
-
-		# XXX: get salt and csrf_token (get to /salt)
-		try:
-			r = requests.get(KEYBASE_IO['SALT'], data=kb_data)
-
-			if r.status_code != 200:
-				print "ERROR: status code : %d" % r.status_code
-				return False
-
-			res = json.loads(r.content)
-			kb_data.update({
-				'login_session' : res['login_session'],
-				'csrf_token' : res['csrf_token']
-			})
-
-		except Exception as e:
-			print "could not get salt:"
-			print e, type(e)
-			return False
-
-		# XXX: calculate pwd hash
-		try:
-			pwh = scrypt.hash(str(self.prop['KEYBASE_PWD']), binascii.unhexlify(res['salt']), \
-				N=2**15, r=8, p=1, buflen=224)[192:224]
-		except Exception as e:
-			print "could not generate pwd hash"
-			print e, type(e)
-			return False
-
-		# XXX: calculate hmac of pwd hash
-		try:
-			hmac_pwh = hmac.new(pwh, b64decode(res['login_session']), hashlib.sha512)
-			kb_data['hmac_pwh'] = binascii.hexlify(hmac_pwh.digest())
-		except Exception as e:
-			print "could not generate hmac of pwh"
-			print e, type(e)
-			return False
-
-		# XXX: post to /login and set session cookie
-		try:
-			r = requests.post(KEYBASE_IO['LOGIN'], data=kb_data)
-
-			if r.status_code != 200:
-				print "ERROR: status code : %d" % r.status_code
-				return False
-
-			res = json.loads(r.content)
-			if res['status']['code'] != 0:
-				print "ERROR: KEYBASE status code : %d" % res['status']['code'], res['status']['desc']
-				return False
-
-			self.prop['keybase_session'] = {
-				'csrf_token' : res['csrf_token'],
-				'cookies' : {'session' : res['session']}
-			}
-
-			del self.prop['KEYBASE_PWD']
-			return True
-
-		except Exception as e:
-			print "could not post to login:"
-			print e, type(e)
-			return False
-
-		return False
 
 	def parse_submission(self):
 		try:
@@ -444,20 +347,13 @@ class CameraVNotaryInstance():
 
 		if self.prop['status'] in ["pending", "confirmed", "registered"]:
 			try:
-				if 'POE_SERVER_ALIAS' not in self.prop.keys():
-					published_message = [
-						"\nThis *notarization document* has been submitted to a Proof of Existence server hosted locally."
-					]
+				published_message = [
+					"\nThis *notarization document* has been submitted to a [Proof of Existence](http://proofofexistence.com/) server.",
+				]
 
-					if "transaction" in self.prop.keys() and "txstamp" in self.prop.keys():
-						published_message += [
-							"\nThis *notarization document* has been absorbed into the blockchain on %(txstamp)s.",
-							"Transaction: [https://insight.bitpay.com/tx/%(transaction)s](https://insight.bitpay.com/tx/%(transaction)s)"
-						]
-				else:
-					published_message = [
-						"\nThis *notarization document* has been submitted to a Proof of Existence server at [%(POE_SERVER_ALIAS)s](%(POE_SERVER_ALIAS)s).",
-						"\nTo view its status on the blockchain, please visit [%(POE_SERVER_ALIAS)s/detail/%(signed_message_hash)s](%(POE_SERVER_ALIAS)s/detail/%(signed_message_hash)s)."
+				if 'POE_SERVER_ALIAS' in self.prop.keys():
+					published_message += [
+						"\nTo view its status on the blockchain, please check [here](%(POE_SERVER_ALIAS)s/detail/%(signed_message_hash)s)."
 					]
 
 				with open(self.prop['notarized_message_path'], 'a') as doc:

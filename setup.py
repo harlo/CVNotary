@@ -24,8 +24,7 @@ def __setup(with_config):
 			DEFAULT_J3M_SERVER, DEFAULT_J3M_SERVER, None),
 		DUtilsKey("J3M_SERVER_ALIAS", "Alias of your J3M server", None, "None", None),
 		DUtilsKey("GNUPG_PATH", "Path to your GPG Keyring", DEFAULT_GNUPG_PATH, DEFAULT_GNUPG_PATH, None),
-		DUtilsKey("GPG_KEY_ID", "Your key ID", None, "none", None),
-		DUtilsKey("KEYBASE_ID", "Your Keybase.io ID", None, "none", None)
+		DUtilsKey("GPG_KEY_ID", "Your key ID", None, "none", None)
 	]
 
 	res, config = save_config(build_config(conf_keys, with_config), return_config=True)

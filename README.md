@@ -4,7 +4,7 @@ Be sure to pull down submodules:
 
 `git submodule update --init --recursive`
 
-Then, run `./install.sh` to build the utility.  During setup, you'll be asked the following:
+Then, run `./install.sh` to build the utility, with optional `/path/to/config/file.json`.  During setup, you'll be asked the following:
 
 1.	**USER_NAME**: The name you'd like to be called, as a notary.
 1.	**NOTARY_DOC_DIR**: The directory in which the app will store your *notarization anouncements*.

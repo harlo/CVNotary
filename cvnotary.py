@@ -24,7 +24,10 @@ class CameraVNotaryInstance():
 		secrets = [DUtilsKey(s, s, None, "none", DUtilsTransforms['NONE_IF_EMPTY']) for s in ['GPG_PWD']]
 
 		self.prop.update(parse_config_keys(secrets, self.prop))
-		self.prop['date_admitted_str'] = datetime.fromtimestamp(float(self.obj['date_admitted']/1000)).strftime("%B %d, %Y (%H:%M:%S)")
+		self.prop.update({
+			'date_admitted_str' : datetime.fromtimestamp(float(self.obj['date_admitted']/1000)).strftime("%B %d, %Y (%H:%M:%S)"),
+			'date_admitted_str_md' : datetime.fromtimestamp(float(self.obj['date_admitted']/1000)).strftime("%Y-%m-%d %H:%M:%S")
+		})
 
 		if notarize_media is not None:
 			self.notarize_media(notarize_media)
